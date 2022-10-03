@@ -1,14 +1,20 @@
 #lang racket
+(require (for-syntax syntax/parse))
 
 (define-syntax define-instruction
-  (syntax-rules () ((_ instr opcode)
-                    (define-syntax instr
-                      (syntax-rules () ((_ arg)
-                       (bitwise-ior opcode (bitwise-and #xfff (bitwise-ior opcode arg)))))))))
-                       
-(define-instruction load  #x1000) (define-instruction store #x2000) (define-instruction add  #x3000)
-(define-instruction sub   #x4000) (define-instruction input #x5000) (define-instruction output  #x6000)
-(define-instruction halt  #x7000) (define-instruction skipcond #x8000) (define-instruction jump #x9000)
+  (syntax-rules () ((_ instr opcode) (define (instr arg)
+                       (bitwise-ior opcode (bitwise-and #xfff (bitwise-ior opcode arg)))))))
+
+(define-syntax (define-instructions stx)
+  (syntax-parse stx
+    ((define-instructions (lit ...) opcodes)
+     (with-syntax (((index ...) (for/list ((i (length (syntax->list (syntax (lit ...)))))) i)))
+       (syntax (begin
+           (define-instruction lit (list-ref opcodes index))
+           ...))))))
+
+(define-instructions (load store add sub input output halt skipcond jump)
+  (map (lambda (x) (* x #x1000)) (cdr (range 10))))
 
 (define (ac m) (car m)) (define (ir m) (cadr m)) (define (pc m) (caddr m))
 (define (op-instr m) (bitwise-and #xf000 (ir m))) (define (op-arg m) (bitwise-and #xfff (ir m))) 
