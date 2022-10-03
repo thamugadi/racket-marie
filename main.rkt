@@ -1,27 +1,30 @@
 #lang racket
-(require (for-syntax syntax/parse))
-
 (define-syntax define-instruction
   (syntax-rules () ((_ instr opcode) (define (instr arg)
                        (bitwise-ior opcode (bitwise-and #xfff (bitwise-ior opcode arg)))))))
 
 (define-syntax (define-instructions stx)
-  (syntax-parse stx
+  (syntax-case stx ()
     ((define-instructions (lit ...) opcodes)
      (with-syntax (((index ...) (for/list ((i (length (syntax->list (syntax (lit ...)))))) i)))
        (syntax (begin
            (define-instruction lit (list-ref opcodes index))
            ...))))))
 
+(define-syntax (define-register stx)
+ (syntax-case stx ()
+  ((define-register reg write index)
+  (syntax (begin (define (reg m) (list-ref m index))
+                 (define (write m x) (append (take m index) (list x) (drop m (+ index 1)))))))))
+
 (define-instructions (load store add sub input output halt skipcond jump)
   (map (lambda (x) (* x #x1000)) (cdr (range 10))))
 
-(define (ac m) (car m)) (define (ir m) (cadr m)) (define (pc m) (caddr m))
-(define (op-instr m) (bitwise-and #xf000 (ir m))) (define (op-arg m) (bitwise-and #xfff (ir m))) 
+(define-register ac write-ac 0)
+(define-register ir write-ir 1)
+(define-register pc write-pc 2)
 
-(define (write-ac m x) (append (list x) (cdr m))) 
-(define (write-ir m x) (append (take m 1) (list x) (cddr m))) 
-(define (write-pc m x) (append (take m 2) (list x) (cdddr m)))
+(define (op-instr m) (bitwise-and #xf000 (ir m))) (define (op-arg m) (bitwise-and #xfff (ir m))) 
 
 (define (memory m) (cadddr m))
 (define (access-mem m n) (car (drop (car (drop m 3)) n)))
