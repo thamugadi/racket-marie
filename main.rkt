@@ -1,7 +1,7 @@
 #lang racket
-(define-syntax define-instruction
-  (syntax-rules () ((_ instr opcode) (define (instr arg)
-                       (bitwise-ior opcode (bitwise-and #xfff (bitwise-ior opcode arg)))))))
+(define-syntax (define-instruction stx)
+  (syntax-case stx () ((define-instruction instr opcode) (syntax (define (instr arg)
+                       (bitwise-ior opcode (bitwise-and #xfff (bitwise-ior opcode arg))))))))
 
 (define-syntax (define-instructions stx)
   (syntax-case stx ()
